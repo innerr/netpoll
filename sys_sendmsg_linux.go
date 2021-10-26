@@ -44,7 +44,7 @@ func sendmsg(fd int, bs [][]byte, ivs []syscall.Iovec, zerocopy bool) (n int, er
 	if zerocopy {
 		flags = MSG_ZEROCOPY
 	}
-	r, _, e := syscall.RawSyscall(syscall.SYS_SENDMSG, uintptr(fd), uintptr(unsafe.Pointer(&msghdr)), flags)
+	r, _, e := syscall.Syscall(syscall.SYS_SENDMSG, uintptr(fd), uintptr(unsafe.Pointer(&msghdr)), flags)
 	if e != 0 {
 		return int(r), syscall.Errno(e)
 	}

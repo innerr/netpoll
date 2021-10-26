@@ -67,7 +67,7 @@ func writev(fd int, bs [][]byte, ivs []syscall.Iovec) (n int, err error) {
 		return 0, nil
 	}
 	// syscall
-	r, _, e := syscall.RawSyscall(syscall.SYS_WRITEV, uintptr(fd), uintptr(unsafe.Pointer(&ivs[0])), uintptr(iovLen))
+	r, _, e := syscall.Syscall(syscall.SYS_WRITEV, uintptr(fd), uintptr(unsafe.Pointer(&ivs[0])), uintptr(iovLen))
 	if e != 0 {
 		return int(r), syscall.Errno(e)
 	}
@@ -82,7 +82,7 @@ func readv(fd int, bs [][]byte, ivs []syscall.Iovec) (n int, err error) {
 		return 0, nil
 	}
 	// syscall
-	r, _, e := syscall.RawSyscall(syscall.SYS_READV, uintptr(fd), uintptr(unsafe.Pointer(&ivs[0])), uintptr(iovLen))
+	r, _, e := syscall.Syscall(syscall.SYS_READV, uintptr(fd), uintptr(unsafe.Pointer(&ivs[0])), uintptr(iovLen))
 	if e != 0 {
 		return int(r), syscall.Errno(e)
 	}
