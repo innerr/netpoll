@@ -16,6 +16,7 @@ package netpoll
 
 import (
 	"fmt"
+	"runtime"
 	"sync/atomic"
 	"syscall"
 )
@@ -42,6 +43,8 @@ func (c *connection) onHup(p Poll) error {
 func (c *connection) onClose() error {
 	if c.closeBy(user) {
 		fmt.Printf("conn[%d] closed by self(user-close)\n", c.fd)
+		pc, file, line, ok := runtime.Caller(2)
+		fmt.Printf("ok[%+v], pc[%+v], file[%+v], line[%+v]\n", ok, pc, file, line)
 
 		// If Close is called during OnPrepare, poll is not registered.
 		if c.operator.poll != nil {
