@@ -15,6 +15,7 @@
 package netpoll
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -295,6 +296,17 @@ func (c *connection) init(conn Conn, prepare OnPrepare) (err error) {
 	if setZeroCopy(c.fd) == nil && setBlockZeroCopySend(c.fd, defaultZeroCopyTimeoutSec, 0) == nil {
 		c.supportZeroCopy = true
 	}
+
+	defer func() {
+		go func() {
+			for range time.Tick(5 * time.Second) {
+				if !c.IsActive() {
+					return
+				}
+				fmt.Printf("NETPOLL: c[%d] input[%d], output[%d]\n", c.fd, c.inputBuffer.Len(), c.outputBuffer.Len()+c.outputBuffer.MallocLen())
+			}
+		}()
+	}()
 	return c.onPrepare(prepare)
 }
 
