@@ -17,7 +17,6 @@ package netpoll
 import (
 	"fmt"
 	"runtime"
-	"sync/atomic"
 	"syscall"
 )
 
@@ -28,6 +27,7 @@ func (c *connection) onHup(p Poll) error {
 	if c.closeBy(poller) {
 		fmt.Printf("conn[%d] closed by peer(on-hup)\n", c.fd)
 		c.triggerRead()
+		close(c.readTrigger) // FIXME: test
 		c.triggerWrite(ErrConnClosed)
 		// It depends on closing by user if OnRequest is nil, otherwise it needs to be released actively.
 		// It can be confirmed that the OnRequest goroutine has been exited before closecallback executing,
@@ -42,15 +42,22 @@ func (c *connection) onHup(p Poll) error {
 // onClose means close by user.
 func (c *connection) onClose() error {
 	if c.closeBy(user) {
-		fmt.Printf("conn[%d] closed by self(user-close)\n", c.fd)
-		pc, file, line, ok := runtime.Caller(2)
-		fmt.Printf("ok[%+v], pc[%+v], file[%+v], line[%+v]\n", ok, pc, file, line)
+		_, file2, line2, _ := runtime.Caller(2)
+		_, file3, line3, _ := runtime.Caller(3)
+		_, file4, line4, _ := runtime.Caller(4)
+		_, file5, line5, _ := runtime.Caller(5)
+		fmt.Printf("NETPOLL: conn[%d] closed by self(user-close)\n", c.fd)
+		fmt.Printf("NETPOLL: conn[%d] caller-line [2][%s][%d], [3][%s][%d], 4[%s][%d], 5[%s][%d]\n",
+			c.fd, file2, line2, file3, line3, file4, line4, file5, line5)
+		fmt.Printf("NETPOLL: conn[%d] readlen=%d, writelen=%d\n",
+			c.fd, c.inputBuffer.Len(), c.outputBuffer.Len()+c.outputBuffer.MallocLen())
 
 		// If Close is called during OnPrepare, poll is not registered.
 		if c.operator.poll != nil {
 			c.operator.Control(PollDetach)
 		}
 		c.triggerRead()
+		close(c.readTrigger) // FIXME: here
 		c.triggerWrite(ErrConnClosed)
 		c.closeCallback(true)
 		return nil
@@ -93,15 +100,15 @@ func (c *connection) inputAck(n int) (err error) {
 		c.maxSize = length
 	}
 
-	var needTrigger = true
-	if length == n {
-		needTrigger = c.onRequest()
-	}
-	if needTrigger && length >= int(atomic.LoadInt32(&c.waitReadSize)) {
-		c.triggerRead()
-	}
+	// var needTrigger = true
+	// if length == n {
+	// 	needTrigger = c.onRequest()
+	// }
+	// if needTrigger && length >= int(atomic.LoadInt32(&c.waitReadSize)) {
+	// 	c.triggerRead()
+	// }
 	// TODO: test here
-	_ = needTrigger
+	c.onRequest()
 	c.triggerRead()
 	return err
 }

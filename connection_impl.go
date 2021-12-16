@@ -330,7 +330,6 @@ func (c *connection) setFinalizer() {
 		c.netFD.Close()
 		c.closeBuffer()
 		freeop(c.operator)
-		close(c.readTrigger) // FIXME: here
 		return nil
 	})
 }
