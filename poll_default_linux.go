@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !race
 // +build !race
 
 package netpoll
 
 import (
+	"fmt"
 	"log"
 	"runtime"
 	"sync/atomic"
@@ -122,6 +124,7 @@ func (p *defaultPoll) handler(events []epollevent) (closed bool) {
 			continue
 		}
 		if !operator.do() {
+			fmt.Printf("NETPOLL: op do failed, hasread[%t], haswrite[%t]\n", operator.OnRead != nil, operator.OnWrite != nil)
 			continue
 		}
 
