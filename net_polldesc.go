@@ -23,19 +23,7 @@ import (
 // TODO: recycle *pollDesc
 func newPollDesc(fd int) *pollDesc {
 	pd, op := &pollDesc{}, &FDOperator{}
-	pd.writeTrigger = make(chan struct{})
-	pd.closeTrigger = make(chan struct{})
-
 	op.FD = fd
-	op.OnWrite = func(p Poll) error {
-		close(pd.writeTrigger)
-		return nil
-	}
-	op.OnHup = func(p Poll) error {
-		atomic.StoreInt32(&pd.closed, 1)
-		close(pd.closeTrigger)
-		return nil
-	}
 	pd.operator = op
 	return pd
 }
@@ -55,6 +43,21 @@ type pollDesc struct {
 func (pd *pollDesc) WaitWrite(ctx context.Context) error {
 	var err error
 	pd.once.Do(func() {
+		pd.writeTrigger = make(chan struct{})
+		pd.closeTrigger = make(chan struct{})
+		pd.operator.OnWrite = func(p Poll) error {
+			select {
+			case <-pd.writeTrigger:
+			default:
+				close(pd.writeTrigger)
+			}
+			return nil
+		}
+		pd.operator.OnHup = func(p Poll) error {
+			atomic.StoreInt32(&pd.closed, 1)
+			close(pd.closeTrigger)
+			return nil
+		}
 		// add ET|Write|Hup
 		pd.operator.poll = pollmanager.Pick()
 		err = pd.operator.Control(PollWritable)
